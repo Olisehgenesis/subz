@@ -8,7 +8,7 @@ type SubscriptionMeta = {
   id: string;
   name: string;
   cost: string;
-  seconds_left: number;
+  seconds_left: string;
 };
 
 function formatShort(seconds: number): string {
@@ -27,7 +27,7 @@ const Tray = () => {
   const refresh = useCallback(async () => {
     const all = await querySelf<SubscriptionMeta[]>("list_subscriptions");
     setSubs(
-      [...all].sort((a, b) => a.seconds_left - b.seconds_left).slice(0, 5),
+      [...all].sort((a, b) => Number(a.seconds_left) - Number(b.seconds_left)).slice(0, 5),
     );
   }, []);
 
@@ -64,7 +64,7 @@ const Tray = () => {
               <span className="subz-tray-name">{s.name}</span>
               <span className="subz-tray-meta">
                 {s.cost ? `${s.cost} · ` : ""}
-                {formatShort(s.seconds_left)}
+                {formatShort(Number(s.seconds_left))}
               </span>
               <button
                 className="nt-button nt-button--sm"

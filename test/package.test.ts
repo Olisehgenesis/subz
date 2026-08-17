@@ -23,7 +23,7 @@ test("subz manifest validates and declares its capability set", async () => {
   expect(result.valid).toBe(true);
   expect(manifest).toMatchObject({
     id: "subz",
-    version: 100,
+    version: 200,
     src: "main.mo",
     capabilities: {
       vetkeys: {

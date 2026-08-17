@@ -17,8 +17,8 @@ type SubscriptionMeta = {
   cost: string;
   category: string;
   funded: boolean;
-  renew_days: number;
-  seconds_left: number;
+  renew_days: string;
+  seconds_left: string;
 };
 
 const listSchema: JsonObject = {
@@ -42,7 +42,7 @@ async function fetchSubs(): Promise<SubscriptionMeta[]> {
 }
 
 function dueSoon(subs: SubscriptionMeta[]): SubscriptionMeta[] {
-  return subs.filter((s) => s.seconds_left <= DUE_SOON_SECONDS);
+  return subs.filter((s) => Number(s.seconds_left) <= DUE_SOON_SECONDS);
 }
 
 async function syncBadge(): Promise<void> {
@@ -74,8 +74,8 @@ exposeTool(
       cost: s.cost,
       category: s.category,
       funded: s.funded,
-      renewDays: s.renew_days,
-      secondsLeft: s.seconds_left,
+      renewDays: Number(s.renew_days),
+      secondsLeft: Number(s.seconds_left),
     }));
   },
 );
@@ -137,7 +137,7 @@ exposeTool(
         funded: false,
         cancel_url: "",
         note_ciphertext: null,
-        renew_days: typeof args.renewDays === "number" ? args.renewDays : 30,
+        renew_days: String(typeof args.renewDays === "number" ? args.renewDays : 30),
       },
     ]);
     await syncBadge();

@@ -13,15 +13,16 @@ import { SERVICE_TEMPLATES, CATEGORIES, monthlyAmount, parseAmount } from "./tem
 import "./style.scss";
 
 type Status = {
-  subscription_count: number;
+  subscription_count: string;
   auto_delete: boolean;
-  monitor_runs: number;
-  purge_count: number;
-  next_expiry_in: number | null;
+  monitor_runs: string;
+  purge_count: string;
+  next_expiry_in: string | null;
   monthly_budget: string;
 };
 
-type SubscriptionMeta = {
+// The kernel's self-call codec carries Candid nat/int as decimal strings.
+type RawSubscriptionMeta = {
   id: string;
   name: string;
   cost: string;
@@ -29,19 +30,42 @@ type SubscriptionMeta = {
   funded: boolean;
   cancel_url: string;
   has_note: boolean;
+  note_bytes: string;
+  renew_days: string;
+  pot_e8s: string;
+  payee: string;
+  created_at: string;
+  expires_at: string;
+  seconds_left: string;
+};
+
+type SubscriptionMeta = Omit<RawSubscriptionMeta,
+  "note_bytes" | "renew_days" | "pot_e8s" | "created_at" | "expires_at" | "seconds_left"
+> & {
   note_bytes: number;
   renew_days: number;
   pot_e8s: number;
-  payee: string;
   created_at: number;
   expires_at: number;
   seconds_left: number;
 };
 
+function normalizeSub(raw: RawSubscriptionMeta): SubscriptionMeta {
+  return {
+    ...raw,
+    note_bytes: Number(raw.note_bytes),
+    renew_days: Number(raw.renew_days),
+    pot_e8s: Number(raw.pot_e8s),
+    created_at: Number(raw.created_at),
+    expires_at: Number(raw.expires_at),
+    seconds_left: Number(raw.seconds_left),
+  };
+}
+
 type PurgeEvent = {
   id: string;
   name: string;
-  purged_at: number;
+  purged_at: string;
   reason: string;
 };
 
@@ -51,7 +75,7 @@ type SessionView = {
   sub_name: string;
   seats: Array<{ member: string; paid: boolean }>;
   open: boolean;
-  created_at: number;
+  created_at: string;
 };
 
 type Notice = { kind: "error" | "success"; text: string };
@@ -164,12 +188,12 @@ export const App = () => {
   const refresh = useCallback(async () => {
     const [nextStatus, nextSubs, nextPurges, nextSessions] = await Promise.all([
       querySelf<Status>("status"),
-      querySelf<SubscriptionMeta[]>("list_subscriptions"),
+      querySelf<RawSubscriptionMeta[]>("list_subscriptions"),
       querySelf<PurgeEvent[]>("purge_log"),
       querySelf<SessionView[]>("list_sessions"),
     ]);
     setStatus(nextStatus);
-    setSubs(nextSubs);
+    setSubs(nextSubs.map(normalizeSub));
     setPurges(nextPurges);
     setSessions(nextSessions);
   }, []);
@@ -280,7 +304,7 @@ export const App = () => {
         funded,
         cancel_url: cancelUrl.trim(),
         note_ciphertext: sealed,
-        renew_days: days,
+        renew_days: String(days),
       },
     ]);
     setName("");
@@ -382,7 +406,7 @@ export const App = () => {
         cost: cost.trim(),
         category,
         cancel_url: cancelUrl.trim(),
-        renew_days: days,
+        renew_days: String(days),
       },
     ]);
     setEditFor(null);
@@ -398,7 +422,7 @@ export const App = () => {
     const draft = Number(potDrafts[id] ?? "");
     if (!Number.isFinite(draft) || draft <= 0) throw new Error("Enter an ICP amount first");
     const e8s = Math.round(draft * 1e8);
-    const message = await updateSelf<string>("fund_pot", [id, e8s]);
+    const message = await updateSelf<string>("fund_pot", [id, String(e8s)]);
     setPotDrafts((prev) => ({ ...prev, [id]: "" }));
     return message;
   });
@@ -820,7 +844,7 @@ export const App = () => {
                     <li key={`${p.id}-${i}`} className="subz-purge">
                       <span className="subz-purge-name">{p.name}</span>
                       <span className="nt-meta subz-purge-date">
-                        {new Date(p.purged_at / 1_000_000).toLocaleString()} · {p.reason}
+                        {new Date(Number(p.purged_at) / 1_000_000).toLocaleString()} · {p.reason}
                       </span>
                     </li>
                   ))}
