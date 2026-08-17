@@ -15,6 +15,15 @@
       }
     }
   },
+  "background": {
+    "path": "background.html",
+    "description": "Resident subZ watcher: tray badge and agent tools"
+  },
+  "tray": {
+    "title": "subZ",
+    "path": "tray.html",
+    "icon": "static/icon.svg"
+  },
   "tiles": [
     {
       "id": "main",
@@ -27,13 +36,25 @@
   "capabilities": {
     "backend_calls": {
       "api": 1,
-      "description": "Per-run call ceiling for the expiry monitor; subZ approves no remote targets",
+      "description": "ICP ledger transfers for subscription pots, plus the expiry monitor's call ceiling",
       "reservation_scopes": [
         "exact"
       ],
-      "max_concurrency": 1,
-      "max_cycles_per_call": 1000000,
-      "max_cycles_per_day": 10000000
+      "install_reservations": [
+        {
+          "kind": "exact",
+          "principal": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          "method": "icrc1_balance_of"
+        },
+        {
+          "kind": "exact",
+          "principal": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          "method": "icrc1_transfer"
+        }
+      ],
+      "max_concurrency": 2,
+      "max_cycles_per_call": 0,
+      "max_cycles_per_day": 0
     },
     "vetkeys": {
       "api": 1,
@@ -84,6 +105,14 @@
         }
       ]
     },
+    "agent_entrypoints": {
+      "api": 1,
+      "entrypoints": [
+        "subz_list",
+        "subz_keep",
+        "subz_track"
+      ]
+    },
     "preapproved_self_calls": {
       "api": 1,
       "methods": [
@@ -97,6 +126,10 @@
         "set_policy",
         "set_budget",
         "set_funded",
+        "update_subscription",
+        "set_payee",
+        "fund_pot",
+        "vault_balance",
         "create_session",
         "list_sessions",
         "mark_seat_paid",
@@ -149,6 +182,26 @@
     "extend_subscription": {
       "type": "update",
       "async": false
+    },
+    "update_subscription": {
+      "type": "update",
+      "async": false
+    },
+    "set_payee": {
+      "type": "update",
+      "async": false
+    },
+    "fund_pot": {
+      "type": "update",
+      "async": false
+    },
+    "vault_balance": {
+      "type": "update",
+      "async": "async*"
+    },
+    "pay_now": {
+      "type": "update",
+      "async": "async*"
     },
     "delete_subscription": {
       "type": "update",

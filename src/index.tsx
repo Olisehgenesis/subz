@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { cx, nt } from "neutron-design-system";
 import {
+  callSelfDialog,
   loadTileContext,
   querySelf,
   updateSelf,
@@ -30,6 +31,8 @@ type SubscriptionMeta = {
   has_note: boolean;
   note_bytes: number;
   renew_days: number;
+  pot_e8s: number;
+  payee: string;
   created_at: number;
   expires_at: number;
   seconds_left: number;
@@ -92,6 +95,17 @@ function slugify(name: string): string {
     .slice(0, 64);
 }
 
+function formatIcp(e8s: number): string {
+  return (e8s / 1e8).toFixed(4).replace(/\.?0+$/, "") + " ICP";
+}
+
+const CYCLE_PRESETS = [
+  { label: "weekly", days: 7 },
+  { label: "monthly", days: 30 },
+  { label: "quarterly", days: 90 },
+  { label: "yearly", days: 365 },
+] as const;
+
 const NoteIcon = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
@@ -141,6 +155,8 @@ export const App = () => {
   const [budgetDraft, setBudgetDraft] = useState("");
   const [splitFor, setSplitFor] = useState<string | null>(null);
   const [splitMembers, setSplitMembers] = useState("");
+  const [editFor, setEditFor] = useState<string | null>(null);
+  const [potDrafts, setPotDrafts] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, string>>({});
 
   const loading = status === null;
@@ -175,16 +191,17 @@ export const App = () => {
   }, [refresh]);
 
   useEffect(() => {
-    if (!showForm && splitFor === null) return;
+    if (!showForm && splitFor === null && editFor === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setShowForm(false);
         setSplitFor(null);
+        setEditFor(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showForm, splitFor]);
+  }, [showForm, splitFor, editFor]);
 
   const say = useCallback((next: Notice) => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -255,14 +272,16 @@ export const App = () => {
       sealed = await sealSecret(vetKey, note.trim());
     }
     const message = await updateSelf<string>("add_subscription", [
-      id,
-      name.trim(),
-      cost.trim(),
-      category,
-      funded,
-      cancelUrl.trim(),
-      sealed,
-      days,
+      {
+        id,
+        name: name.trim(),
+        cost: cost.trim(),
+        category,
+        funded,
+        cancel_url: cancelUrl.trim(),
+        note_ciphertext: sealed,
+        renew_days: days,
+      },
     ]);
     setName("");
     setCost("");
@@ -339,6 +358,56 @@ export const App = () => {
 
   const closeSession = (sessionId: string) => run(async () => {
     return await updateSelf<string>("close_session", [sessionId]);
+  });
+
+  const openEdit = (s: SubscriptionMeta) => {
+    setEditFor(s.id);
+    setName(s.name);
+    setCost(s.cost);
+    setCategory(s.category || "custom");
+    setCancelUrl(s.cancel_url);
+    setRenewDays(String(s.renew_days));
+  };
+
+  const saveEdit = () => run(async () => {
+    if (!editFor) return "Nothing selected";
+    const days = Number(renewDays);
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      throw new Error("Renewal must be 1-3650 days");
+    }
+    const message = await updateSelf<string>("update_subscription", [
+      {
+        id: editFor,
+        name: name.trim(),
+        cost: cost.trim(),
+        category,
+        cancel_url: cancelUrl.trim(),
+        renew_days: days,
+      },
+    ]);
+    setEditFor(null);
+    setName("");
+    setCost("");
+    setCategory("custom");
+    setCancelUrl("");
+    setRenewDays("30");
+    return message;
+  });
+
+  const fundPot = (id: string) => run(async () => {
+    const draft = Number(potDrafts[id] ?? "");
+    if (!Number.isFinite(draft) || draft <= 0) throw new Error("Enter an ICP amount first");
+    const e8s = Math.round(draft * 1e8);
+    const message = await updateSelf<string>("fund_pot", [id, e8s]);
+    setPotDrafts((prev) => ({ ...prev, [id]: "" }));
+    return message;
+  });
+
+  const payNow = (id: string) => run(async () => {
+    // Spending moves real ICP: this goes through the kernel consent dialog.
+    const result = await callSelfDialog<{ ok: boolean; message: string }>("pay_now", [id]);
+    if (!result.ok) throw new Error(result.message);
+    return result.message;
   });
 
   const purgeNow = () => run(async () => {
@@ -543,6 +612,14 @@ export const App = () => {
                         >
                           Split
                         </button>
+                        <button
+                          className="nt-button nt-button--ghost nt-button--sm"
+                          disabled={busy}
+                          onClick={() => openEdit(s)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
                         {s.has_note ? (
                           <button
                             className="nt-icon-button"
@@ -589,6 +666,39 @@ export const App = () => {
                           className="subz-fuse-fill"
                           style={{ width: `${fuseFraction(s, nowMs) * 100}%` }}
                         />
+                      </div>
+                      <div className="subz-pot">
+                        <span className="subz-pot-label">
+                          pot: {s.pot_e8s > 0 ? formatIcp(s.pot_e8s) : "empty"}
+                          {s.payee ? "" : " · no payee"}
+                        </span>
+                        <input
+                          className="nt-input subz-pot-input"
+                          inputMode="decimal"
+                          placeholder="0.5"
+                          aria-label={`Fund ${s.name} pot in ICP`}
+                          value={potDrafts[s.id] ?? ""}
+                          onChange={(e) =>
+                            setPotDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))
+                          }
+                        />
+                        <button
+                          className="nt-button nt-button--ghost nt-button--sm"
+                          disabled={busy || !(potDrafts[s.id] ?? "").trim()}
+                          onClick={() => fundPot(s.id)}
+                          type="button"
+                        >
+                          Fund
+                        </button>
+                        <button
+                          className="nt-button nt-button--sm"
+                          disabled={busy || s.pot_e8s === 0}
+                          onClick={() => payNow(s.id)}
+                          type="button"
+                          title="Pays the pot to the payee and resets the fuse"
+                        >
+                          Pay
+                        </button>
                       </div>
                       {sessions.filter((sess) => sess.sub_id === s.id).map((sess) => {
                         const share = parseAmount(s.cost);
@@ -810,6 +920,18 @@ export const App = () => {
                   value={renewDays}
                   onChange={(e) => setRenewDays(e.target.value)}
                 />
+                <div className="subz-presets">
+                  {CYCLE_PRESETS.map((p) => (
+                    <button
+                      key={p.days}
+                      className={cx("subz-filter", { "subz-filter--active": renewDays === String(p.days) })}
+                      type="button"
+                      onClick={() => setRenewDays(String(p.days))}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="nt-field">
                 <label className="nt-label" htmlFor="subz-cancel">Cancel link <span className="nt-muted">(optional)</span></label>
@@ -909,6 +1031,111 @@ export const App = () => {
                 data-tid="subz-create-session"
               >
                 Start the split
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editFor !== null ? (
+        <div
+          className="subz-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditFor(null);
+          }}
+        >
+          <div className="subz-dialog" role="dialog" aria-label="Edit subscription">
+            <div className="subz-dialog-head">
+              <h2 className="nt-subtitle">Edit {subs.find((s) => s.id === editFor)?.name ?? ""}</h2>
+              <button className="nt-icon-button" type="button" onClick={() => setEditFor(null)} title="Close">
+                ✕
+              </button>
+            </div>
+            <div className="nt-form-grid nt-form-grid--two">
+              <div className="nt-field">
+                <label className="nt-label" htmlFor="subz-edit-name">Name</label>
+                <input
+                  id="subz-edit-name"
+                  className="nt-input"
+                  autoFocus
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="nt-field">
+                <label className="nt-label" htmlFor="subz-edit-cost">Cost</label>
+                <input
+                  id="subz-edit-cost"
+                  className="nt-input"
+                  placeholder="$15.49/mo"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="nt-field">
+              <span className="nt-label" id="subz-edit-category-label">Category</span>
+              <div className="subz-filters" role="group" aria-labelledby="subz-edit-category-label">
+                {CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    className={cx("subz-filter", { "subz-filter--active": category === c })}
+                    type="button"
+                    onClick={() => setCategory(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="nt-form-grid nt-form-grid--two">
+              <div className="nt-field">
+                <label className="nt-label" htmlFor="subz-edit-days">Renews every (days)</label>
+                <input
+                  id="subz-edit-days"
+                  className="nt-input"
+                  inputMode="numeric"
+                  value={renewDays}
+                  onChange={(e) => setRenewDays(e.target.value)}
+                />
+                <div className="subz-presets">
+                  {CYCLE_PRESETS.map((p) => (
+                    <button
+                      key={p.days}
+                      className={cx("subz-filter", { "subz-filter--active": renewDays === String(p.days) })}
+                      type="button"
+                      onClick={() => setRenewDays(String(p.days))}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="nt-field">
+                <label className="nt-label" htmlFor="subz-edit-cancel">Cancel link</label>
+                <input
+                  id="subz-edit-cancel"
+                  className="nt-input"
+                  placeholder="https://…/cancel"
+                  value={cancelUrl}
+                  onChange={(e) => setCancelUrl(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="nt-help">Editing never resets the fuse — the burn clock stays as it was.</p>
+            <div className="subz-dialog-actions">
+              <button className="nt-button nt-button--ghost" type="button" onClick={() => setEditFor(null)}>
+                Cancel
+              </button>
+              <button
+                className="nt-button"
+                disabled={busy || !name.trim()}
+                onClick={saveEdit}
+                type="button"
+                data-tid="subz-save-edit"
+              >
+                Save changes
               </button>
             </div>
           </div>

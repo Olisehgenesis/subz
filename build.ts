@@ -4,19 +4,24 @@ import { sassPlugin } from "esbuild-sass-plugin";
 import { readFile, writeFile } from "node:fs/promises";
 import type { BuildOptions } from "esbuild";
 
-const outfile = "./dist/web/main.js";
+const outdir = "./dist/web";
+const entries = ["index.js", "background.js", "tray.js"];
 
 async function stripRemoteDiagnostics(): Promise<void> {
-  const source = await readFile(outfile, "utf8");
-  const sanitized = source.replaceAll("https://react.dev/errors/", "#react-error-");
-  if (sanitized !== source) {
-    await writeFile(outfile, sanitized);
+  for (const entry of entries) {
+    const path = `${outdir}/${entry}`;
+    const source = await readFile(path, "utf8").catch(() => null);
+    if (source === null) continue;
+    const sanitized = source.replaceAll("https://react.dev/errors/", "#react-error-");
+    if (sanitized !== source) {
+      await writeFile(path, sanitized);
+    }
   }
 }
 
 const config: BuildOptions = {
-  entryPoints: ["./src/index.tsx"],
-  outfile,
+  entryPoints: ["./src/index.tsx", "./src/background.ts", "./src/tray.tsx"],
+  outdir,
   bundle: true,
   minify: true,
   external: [],

@@ -62,9 +62,7 @@ test("subz emits build-time method schemas for the vault API", async () => {
       maxItems: 1,
       prefixItems: [
         {
-          type: "array",
-          minItems: 8,
-          maxItems: 8,
+          type: "object",
         },
       ],
     },

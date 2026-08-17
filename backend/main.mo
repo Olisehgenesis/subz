@@ -3,6 +3,7 @@ import Char "mo:core/Char";
 import Int "mo:core/Int";
 import Nat "mo:core/Nat";
 import Nat8 "mo:core/Nat8";
+import Principal "mo:core/Principal";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
 import NeutronCapabilities "mo:neutron-capabilities";
@@ -24,6 +25,8 @@ module {
         has_note : Bool;
         note_bytes : Nat;
         renew_days : Nat;
+        pot_e8s : Nat;
+        payee : Text;
         created_at : Int;
         expires_at : Int;
         seconds_left : Int;
@@ -44,6 +47,68 @@ module {
     public type SplitJoinInput = {
         session_id : Text;
         member : Text;
+    };
+
+    public type AddSubscriptionInput = {
+        id : Text;
+        name : Text;
+        cost : Text;
+        category : Text;
+        funded : Bool;
+        cancel_url : Text;
+        note_ciphertext : ?Blob;
+        renew_days : Nat;
+    };
+
+    public type UpdateSubscriptionInput = {
+        id : Text;
+        name : Text;
+        cost : Text;
+        category : Text;
+        cancel_url : Text;
+        renew_days : Nat;
+    };
+
+    public type IcrcAccount = {
+        owner : Principal;
+        subaccount : ?Blob;
+    };
+
+    public type IcrcTransferArgs = {
+        from_subaccount : ?Blob;
+        to : IcrcAccount;
+        amount : Nat;
+        fee : ?Nat;
+        memo : ?Blob;
+        created_at_time : ?Nat64;
+    };
+
+    public type IcrcTransferResult = {
+        #Ok : Nat;
+        #Err : {
+            #BadFee : { expected_fee : Nat };
+            #InsufficientFunds : { balance : Nat };
+            #GenericError : { error_code : Nat; message : Text };
+            #TemporarilyUnavailable;
+            #Duplicate : { duplicate_of : Nat };
+            #BadBurn : { min_burn_amount : Nat };
+            #CreatedInFuture : { ledger_time : Nat64 };
+            #TooOld;
+            #GenericBatchError : { error_code : Nat; message : Text };
+        };
+    };
+
+    public type PayResult = {
+        ok : Bool;
+        message : Text;
+        block_index : ?Nat;
+        pot_e8s : Nat;
+    };
+
+    public type BalanceView = {
+        ok : Bool;
+        message : Text;
+        balance_e8s : Nat;
     };
 
     public type SessionView = {
@@ -76,6 +141,7 @@ module {
             subz : Memory.Mem;
         };
         capabilities : {
+            backend_calls : NeutronCapabilities.BackendCallsV1;
             chain_key_signing : NeutronCapabilities.ChainKeySigningV1;
         };
     };
@@ -83,6 +149,13 @@ module {
     public class Init(env : AppBackendEnvironment) {
         let mem = env.stable_memory.subz;
         let chainKeySigning = env.capabilities.chain_key_signing;
+        let backendCalls = env.capabilities.backend_calls;
+
+        // ICP ledger: the same principal resolves on mainnet and on the local
+        // full_protocol_fixtures profile.
+        let ICP_LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai";
+        let LEDGER_FEE_E8S : Nat = 10_000;
+        let MAX_PAYEE_BYTES : Nat = 128;
 
         let MAX_SUBSCRIPTIONS : Nat = 64;
         let MAX_ID_BYTES : Nat = 64;
@@ -116,6 +189,8 @@ module {
                     case null 0;
                 };
                 renew_days = s.renew_days;
+                pot_e8s = s.pot_e8s;
+                payee = s.payee;
                 created_at = s.created_at;
                 expires_at = s.expires_at;
                 seconds_left = Int.max((s.expires_at - Time.now()) / 1_000_000_000, 0);
@@ -183,28 +258,23 @@ module {
         };
 
         public func /*update*/set_funded(id : Text, funded : Bool) : Text {
-            switch (findSubscription(id)) {
-                case null return "No subscription with id " # id;
-                case (?_) {};
-            };
-            mem.subscriptions := Array.map<Memory.Subscription, Memory.Subscription>(
-                mem.subscriptions,
-                func(s) {
-                    if (s.id != id) return s;
-                    {
-                        id = s.id;
-                        name = s.name;
-                        cost = s.cost;
-                        category = s.category;
-                        funded;
-                        cancel_url = s.cancel_url;
-                        note_ciphertext = s.note_ciphertext;
-                        renew_days = s.renew_days;
-                        created_at = s.created_at;
-                        expires_at = s.expires_at;
-                    };
-                },
-            );
+            let applied = patchSubscription(id, func(s) {
+                {
+                    id = s.id;
+                    name = s.name;
+                    cost = s.cost;
+                    category = s.category;
+                    funded;
+                    cancel_url = s.cancel_url;
+                    note_ciphertext = s.note_ciphertext;
+                    renew_days = s.renew_days;
+                    pot_e8s = s.pot_e8s;
+                    payee = s.payee;
+                    created_at = s.created_at;
+                    expires_at = s.expires_at;
+                };
+            });
+            if (not applied) return "No subscription with id " # id;
             if (funded) id # " funded" else id # " unfunded";
         };
 
@@ -355,16 +425,15 @@ module {
             };
         };
 
-        public func /*update*/add_subscription(
-            id : Text,
-            name : Text,
-            cost : Text,
-            category : Text,
-            funded : Bool,
-            cancel_url : Text,
-            note_ciphertext : ?Blob,
-            renew_days : Nat,
-        ) : Text {
+        public func /*update*/add_subscription(input : AddSubscriptionInput) : Text {
+            let id = input.id;
+            let name = input.name;
+            let cost = input.cost;
+            let category = input.category;
+            let funded = input.funded;
+            let cancel_url = input.cancel_url;
+            let note_ciphertext = input.note_ciphertext;
+            let renew_days = input.renew_days;
             if (id.size() == 0 or id.size() > MAX_ID_BYTES) return "Id must be 1-64 characters";
             if (name.size() == 0 or name.size() > MAX_NAME_BYTES) return "Name must be 1-120 characters";
             if (cost.size() > MAX_COST_BYTES) return "Cost must be 32 characters or fewer";
@@ -392,6 +461,8 @@ module {
                 cancel_url;
                 note_ciphertext;
                 renew_days;
+                pot_e8s = 0;
+                payee = "";
                 created_at = now;
                 expires_at = now + Int.fromNat(renew_days) * DAY_NS;
             };
@@ -399,30 +470,217 @@ module {
             "Stored " # id # " — renews in " # Nat.toText(renew_days) # " days unless you keep it";
         };
 
-        public func /*update*/extend_subscription(id : Text) : Text {
-            switch (findSubscription(id)) {
-                case null return "No subscription with id " # id;
-                case (?s) {};
-            };
+        func patchSubscription(id : Text, patch : Memory.Subscription -> Memory.Subscription) : Bool {
+            var found = false;
             mem.subscriptions := Array.map<Memory.Subscription, Memory.Subscription>(
                 mem.subscriptions,
                 func(s) {
                     if (s.id != id) return s;
-                    {
-                        id = s.id;
-                        name = s.name;
-                        cost = s.cost;
-                        category = s.category;
-                        funded = s.funded;
-                        cancel_url = s.cancel_url;
-                        note_ciphertext = s.note_ciphertext;
-                        renew_days = s.renew_days;
-                        created_at = s.created_at;
-                        expires_at = Time.now() + Int.fromNat(s.renew_days) * DAY_NS;
-                    };
+                    found := true;
+                    patch(s);
                 },
             );
+            found;
+        };
+
+        func extendExpiry(s : Memory.Subscription) : Memory.Subscription {
+            {
+                id = s.id;
+                name = s.name;
+                cost = s.cost;
+                category = s.category;
+                funded = s.funded;
+                cancel_url = s.cancel_url;
+                note_ciphertext = s.note_ciphertext;
+                renew_days = s.renew_days;
+                pot_e8s = s.pot_e8s;
+                payee = s.payee;
+                created_at = s.created_at;
+                expires_at = Time.now() + Int.fromNat(s.renew_days) * DAY_NS;
+            };
+        };
+
+        public func /*update*/extend_subscription(id : Text) : Text {
+            if (not patchSubscription(id, extendExpiry)) return "No subscription with id " # id;
             "Kept " # id;
+        };
+
+        public func /*update*/update_subscription(input : UpdateSubscriptionInput) : Text {
+            let id = input.id;
+            let name = input.name;
+            let cost = input.cost;
+            let category = input.category;
+            let cancel_url = input.cancel_url;
+            let renew_days = input.renew_days;
+            if (name.size() == 0 or name.size() > MAX_NAME_BYTES) return "Name must be 1-120 characters";
+            if (cost.size() > MAX_COST_BYTES) return "Cost must be 32 characters or fewer";
+            if (category.size() > MAX_CATEGORY_BYTES) return "Category must be 24 characters or fewer";
+            if (cancel_url.size() > MAX_CANCEL_URL_BYTES) return "Cancel URL must be 256 characters or fewer";
+            if (renew_days < MIN_RENEW_DAYS or renew_days > MAX_RENEW_DAYS) return "Renewal must be 1-3650 days";
+            // Editing details never touches the fuse — expiry stays as it was.
+            let applied = patchSubscription(id, func(s) {
+                {
+                    id = s.id;
+                    name;
+                    cost;
+                    category;
+                    funded = s.funded;
+                    cancel_url;
+                    note_ciphertext = s.note_ciphertext;
+                    renew_days;
+                    pot_e8s = s.pot_e8s;
+                    payee = s.payee;
+                    created_at = s.created_at;
+                    expires_at = s.expires_at;
+                };
+            });
+            if (not applied) return "No subscription with id " # id;
+            "Updated " # id;
+        };
+
+        public func /*update*/set_payee(id : Text, payee : Text) : Text {
+            if (payee.size() > MAX_PAYEE_BYTES) return "Payee must be 128 characters or fewer";
+            let applied = patchSubscription(id, func(s) {
+                {
+                    id = s.id;
+                    name = s.name;
+                    cost = s.cost;
+                    category = s.category;
+                    funded = s.funded;
+                    cancel_url = s.cancel_url;
+                    note_ciphertext = s.note_ciphertext;
+                    renew_days = s.renew_days;
+                    pot_e8s = s.pot_e8s;
+                    payee;
+                    created_at = s.created_at;
+                    expires_at = s.expires_at;
+                };
+            });
+            if (not applied) return "No subscription with id " # id;
+            if (payee == "") "Payee cleared for " # id else "Payee set for " # id;
+        };
+
+        public func /*update*/fund_pot(id : Text, amount_e8s : Nat) : Text {
+            let applied = patchSubscription(id, func(s) {
+                {
+                    id = s.id;
+                    name = s.name;
+                    cost = s.cost;
+                    category = s.category;
+                    funded = true;
+                    cancel_url = s.cancel_url;
+                    note_ciphertext = s.note_ciphertext;
+                    renew_days = s.renew_days;
+                    pot_e8s = s.pot_e8s + amount_e8s;
+                    payee = s.payee;
+                    created_at = s.created_at;
+                    expires_at = s.expires_at;
+                };
+            });
+            if (not applied) return "No subscription with id " # id;
+            "Pot for " # id # " now holds " # Nat.toText(amount_e8s) # " more e8s";
+        };
+
+        func clearPot(id : Text) {
+            ignore patchSubscription(id, func(s) {
+                {
+                    id = s.id;
+                    name = s.name;
+                    cost = s.cost;
+                    category = s.category;
+                    funded = false;
+                    cancel_url = s.cancel_url;
+                    note_ciphertext = s.note_ciphertext;
+                    renew_days = s.renew_days;
+                    pot_e8s = 0;
+                    payee = s.payee;
+                    created_at = s.created_at;
+                    expires_at = s.expires_at;
+                };
+            });
+        };
+
+        public func /*update*/vault_balance() : async* BalanceView {
+            let ledger = Principal.fromText(ICP_LEDGER);
+            let account : IcrcAccount = {
+                owner = backendCalls.canister_principal;
+                subaccount = null;
+            };
+            if (not backendCalls.can_call(ledger, "icrc1_balance_of")) {
+                return { ok = false; message = "Reserve icrc1_balance_of on the ICP ledger first"; balance_e8s = 0 };
+            };
+            switch (await* backendCalls.call({
+                canister = ledger;
+                method = "icrc1_balance_of";
+                args = to_candid (account);
+                cycles = 0;
+            })) {
+                case (#err(error)) {
+                    { ok = false; message = "Ledger call failed (" # error.code # ")"; balance_e8s = 0 };
+                };
+                case (#ok(reply)) {
+                    let decoded : ?Nat = from_candid reply;
+                    switch (decoded) {
+                        case (?balance) ({ ok = true; message = ""; balance_e8s = balance });
+                        case null ({ ok = false; message = "Ledger returned an unreadable balance"; balance_e8s = 0 });
+                    };
+                };
+            };
+        };
+
+        // Pays out the sub's pot to its payee, then counts as keeping the sub:
+        // the fuse resets on a successful transfer.
+        public func /*update*/pay_now(id : Text) : async* PayResult {
+            let sub = switch (findSubscription(id)) {
+                case null return { ok = false; message = "No subscription with id " # id; block_index = null; pot_e8s = 0 };
+                case (?s) s;
+            };
+            if (sub.pot_e8s == 0) return { ok = false; message = "Pot is empty"; block_index = null; pot_e8s = 0 };
+            if (sub.payee == "") return { ok = false; message = "Set a payee principal first"; block_index = null; pot_e8s = sub.pot_e8s };
+            if (sub.pot_e8s <= LEDGER_FEE_E8S) return { ok = false; message = "Pot must exceed the 0.0001 ICP ledger fee"; block_index = null; pot_e8s = sub.pot_e8s };
+            let payeePrincipal = try {
+                Principal.fromText(sub.payee);
+            } catch (_cause) {
+                return { ok = false; message = "Payee is not a valid principal"; block_index = null; pot_e8s = sub.pot_e8s };
+            };
+            let ledger = Principal.fromText(ICP_LEDGER);
+            if (not backendCalls.can_call(ledger, "icrc1_transfer")) {
+                return { ok = false; message = "Reserve icrc1_transfer on the ICP ledger first"; block_index = null; pot_e8s = sub.pot_e8s };
+            };
+            let args : IcrcTransferArgs = {
+                from_subaccount = null;
+                to = { owner = payeePrincipal; subaccount = null };
+                amount = sub.pot_e8s - LEDGER_FEE_E8S;
+                fee = ?LEDGER_FEE_E8S;
+                memo = null;
+                created_at_time = null;
+            };
+            switch (await* backendCalls.call({
+                canister = ledger;
+                method = "icrc1_transfer";
+                args = to_candid (args);
+                cycles = 0;
+            })) {
+                case (#err(error)) {
+                    { ok = false; message = "Transfer failed (" # error.code # ")"; block_index = null; pot_e8s = sub.pot_e8s };
+                };
+                case (#ok(reply)) {
+                    let decoded : ?IcrcTransferResult = from_candid reply;
+                    switch (decoded) {
+                        case (?#Ok(blockIndex)) {
+                            clearPot(id);
+                            ignore patchSubscription(id, extendExpiry);
+                            ({ ok = true; message = "Paid in ledger block " # Nat.toText(blockIndex) # " — fuse reset"; block_index = ?blockIndex; pot_e8s = 0 });
+                        };
+                        case (?#Err(_)) {
+                            ({ ok = false; message = "Ledger rejected the transfer (check canister balance)"; block_index = null; pot_e8s = sub.pot_e8s });
+                        };
+                        case null {
+                            ({ ok = false; message = "Ledger returned an unreadable result"; block_index = null; pot_e8s = sub.pot_e8s });
+                        };
+                    };
+                };
+            };
         };
 
         public func /*update*/delete_subscription(id : Text) : Text {
@@ -566,18 +824,26 @@ public type close_session_Output = Text;
 public type split_join_Input = (request : SplitJoinInput);
 public type split_join_Output = Text;
 
-public type add_subscription_Input = (id : Text,
-            name : Text,
-            cost : Text,
-            category : Text,
-            funded : Bool,
-            cancel_url : Text,
-            note_ciphertext : ?Blob,
-            renew_days : Nat,);
+public type add_subscription_Input = (input : AddSubscriptionInput);
 public type add_subscription_Output = Text;
 
 public type extend_subscription_Input = (id : Text);
 public type extend_subscription_Output = Text;
+
+public type update_subscription_Input = (input : UpdateSubscriptionInput);
+public type update_subscription_Output = Text;
+
+public type set_payee_Input = (id : Text, payee : Text);
+public type set_payee_Output = Text;
+
+public type fund_pot_Input = (id : Text, amount_e8s : Nat);
+public type fund_pot_Output = Text;
+
+public type vault_balance_Input = ();
+public type vault_balance_Output = BalanceView;
+
+public type pay_now_Input = (id : Text);
+public type pay_now_Output = PayResult;
 
 public type delete_subscription_Input = (id : Text);
 public type delete_subscription_Output = Text;

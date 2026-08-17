@@ -10,6 +10,8 @@ module {
         cancel_url : Text;
         note_ciphertext : ?Blob;
         renew_days : Nat;
+        pot_e8s : Nat;
+        payee : Text;
         created_at : Int;
         expires_at : Int;
     };

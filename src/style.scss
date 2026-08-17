@@ -568,6 +568,73 @@
     overflow-wrap: anywhere;
   }
 
+  // Per-card pot row and day presets.
+  .subz-pot {
+    align-items: center;
+    border-top: 1px solid var(--nt-line-subtle);
+    display: flex;
+    gap: var(--nt-gap-2);
+    margin-top: var(--nt-gap-2);
+    padding-top: var(--nt-pad-2);
+  }
+
+  .subz-pot-label {
+    color: var(--nt-text-faint);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    flex-shrink: 0;
+  }
+
+  .subz-pot-input {
+    max-width: 72px;
+  }
+
+  .subz-presets {
+    display: flex;
+    gap: var(--nt-gap-1);
+    margin-top: var(--nt-gap-1);
+  }
+
+  // Tray popover rows.
+  .subz-tray {
+    padding: var(--nt-pad-3);
+  }
+
+  .subz-tray-title {
+    color: var(--nt-text-faint);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    margin: 0 0 var(--nt-gap-2);
+    text-transform: uppercase;
+  }
+
+  .subz-tray-list {
+    display: grid;
+    gap: var(--nt-gap-1);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .subz-tray-row {
+    align-items: center;
+    display: flex;
+    gap: var(--nt-gap-2);
+  }
+
+  .subz-tray-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .subz-tray-meta {
+    color: var(--nt-text-muted);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    margin-left: auto;
+  }
+
   // Toast: transient confirmation, bottom corner, auto-dismissed by the app.
   .subz-toast {
     bottom: var(--nt-pad-4);
