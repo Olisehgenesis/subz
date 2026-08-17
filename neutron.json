@@ -1,0 +1,200 @@
+{
+  "format": 3,
+  "name": "subZ",
+  "id": "subz",
+  "version": 100,
+  "description": "Subscription vault: vetKey-sealed API keys that self-destruct unless you extend them",
+  "src": "main.mo",
+  "backend": {
+    "capabilities": {
+      "backend_calls": {
+        "api": 1
+      },
+      "chain_key_signing": {
+        "api": 1
+      }
+    }
+  },
+  "tiles": [
+    {
+      "id": "main",
+      "title": "subZ",
+      "path": "index.html",
+      "icon": "static/icon.svg",
+      "description": "Self-destructing subscription vault"
+    }
+  ],
+  "capabilities": {
+    "backend_calls": {
+      "api": 1,
+      "description": "Per-run call ceiling for the expiry monitor; subZ approves no remote targets",
+      "reservation_scopes": [
+        "exact"
+      ],
+      "max_concurrency": 1,
+      "max_cycles_per_call": 1000000,
+      "max_cycles_per_day": 10000000
+    },
+    "vetkeys": {
+      "api": 1,
+      "description": "Seal and unseal subscription API keys in this browser; the canister only ever stores ciphertext",
+      "slots": [
+        {
+          "id": "keys",
+          "purpose": "Symmetric key used to encrypt every stored API key before it leaves the browser"
+        }
+      ]
+    },
+    "scheduled_tasks": {
+      "api": 1,
+      "tasks": [
+        {
+          "id": "expiry_monitor",
+          "method": "expiry_monitor",
+          "interval_seconds": 3600,
+          "run_on_start": true,
+          "max_backend_calls": 1
+        }
+      ]
+    },
+    "chain_key_signing": {
+      "api": 1,
+      "slots": [
+        {
+          "id": "purge_receipts",
+          "algorithm": "ecdsa_secp256k1",
+          "purpose": "Sign purge receipts proving which subscriptions were deleted and when",
+          "max_assertion_bytes": 4096
+        }
+      ]
+    },
+    "public_ingress": {
+      "api": 1,
+      "routes": [
+        {
+          "protocol": "subz_split_v1",
+          "id": "join",
+          "handler": "split_join",
+          "mode": "update",
+          "caller": "canister",
+          "max_request_bytes": 256,
+          "max_response_bytes": 256,
+          "max_calls_per_hour": 60,
+          "required_cycles": 1000000000
+        }
+      ]
+    },
+    "preapproved_self_calls": {
+      "api": 1,
+      "methods": [
+        "status",
+        "add_subscription",
+        "extend_subscription",
+        "delete_subscription",
+        "list_subscriptions",
+        "purge_log",
+        "get_key",
+        "set_policy",
+        "set_budget",
+        "set_funded",
+        "create_session",
+        "list_sessions",
+        "mark_seat_paid",
+        "close_session",
+        "purge_now",
+        "sign_purge_receipt"
+      ]
+    }
+  },
+  "func": {
+    "status": {
+      "type": "query",
+      "async": false
+    },
+    "set_budget": {
+      "type": "update",
+      "async": false
+    },
+    "set_funded": {
+      "type": "update",
+      "async": false
+    },
+    "create_session": {
+      "type": "update",
+      "async": false
+    },
+    "list_sessions": {
+      "type": "query",
+      "async": false
+    },
+    "mark_seat_paid": {
+      "type": "update",
+      "async": false
+    },
+    "close_session": {
+      "type": "update",
+      "async": false
+    },
+    "split_join": {
+      "type": "update",
+      "async": false,
+      "arg": [
+        "caller"
+      ]
+    },
+    "add_subscription": {
+      "type": "update",
+      "async": false
+    },
+    "extend_subscription": {
+      "type": "update",
+      "async": false
+    },
+    "delete_subscription": {
+      "type": "update",
+      "async": false
+    },
+    "list_subscriptions": {
+      "type": "query",
+      "async": false
+    },
+    "purge_log": {
+      "type": "query",
+      "async": false
+    },
+    "get_key": {
+      "type": "query",
+      "async": false
+    },
+    "set_policy": {
+      "type": "update",
+      "async": false
+    },
+    "purge_now": {
+      "type": "update",
+      "async": false
+    },
+    "sign_purge_receipt": {
+      "type": "update",
+      "async": "async*"
+    },
+    "expiry_monitor": {
+      "type": "internal",
+      "async": "async*",
+      "arg": [
+        "task_capabilities"
+      ]
+    }
+  },
+  "memory": {
+    "subz": {
+      "version": 1,
+      "schemas": {
+        "1": {
+          "src": "memory/subz/v1.mo"
+        }
+      },
+      "migrations": []
+    }
+  }
+}

@@ -1,0 +1,623 @@
+@use "neutron-design-system/styles.scss";
+
+@layer nt.tokens, nt.base, nt.layout, nt.components, nt.utilities, app;
+
+@layer app {
+  // Burn-manifest identity: ember accent, bundled typewriter-adjacent mono for
+  // data and labels. Everything else defers to the kernel design tokens.
+  @font-face {
+    font-family: "Plex Mono";
+    src: url("./fonts/ibm-plex-mono-400.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Plex Mono";
+    src: url("./fonts/ibm-plex-mono-500.woff2") format("woff2");
+    font-weight: 500;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Plex Mono";
+    src: url("./fonts/ibm-plex-mono-600.woff2") format("woff2");
+    font-weight: 600;
+    font-display: swap;
+  }
+
+  .nt-app.subz-app {
+    --nt-accent: #e8a15c;
+    --nt-accent-muted: #33271a;
+    container-type: inline-size;
+    min-height: 100dvh;
+    padding: var(--nt-pad-5);
+  }
+
+  .subz-shell {
+    margin: 0 auto;
+    max-width: 760px;
+    min-height: calc(100dvh - (var(--nt-pad-5) * 2));
+    width: min(100%, 760px);
+  }
+
+  // Top bar: brand left, state + the one creation action right.
+  .subz-topbar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .subz-brand {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .subz-eyebrow {
+    color: var(--nt-text-faint);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .subz-wordmark {
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-title);
+    font-weight: 600;
+    line-height: var(--nt-line-height-tight);
+    margin: 0;
+  }
+
+  .subz-wordmark-z {
+    color: var(--nt-accent);
+  }
+
+  .subz-topbar-actions {
+    align-items: center;
+    display: flex;
+    gap: var(--nt-gap-2);
+  }
+
+  // Hero: the next renewal, ticking live. Value first, label quiet.
+  .subz-hero {
+    display: grid;
+    gap: var(--nt-gap-2);
+  }
+
+  .subz-hero-row {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nt-gap-3);
+    justify-content: space-between;
+  }
+
+  .subz-hero-label {
+    color: var(--nt-text-muted);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-label);
+    text-transform: uppercase;
+  }
+
+  .subz-hero-value {
+    color: var(--nt-text);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: 34px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: var(--nt-line-height-tight);
+  }
+
+  .subz-hero--warning .subz-hero-value {
+    color: var(--nt-warning);
+  }
+
+  .subz-hero--danger .subz-hero-value {
+    color: var(--nt-danger);
+  }
+
+  // The signature: a fuse that literally burns down. Solid fills only.
+  .subz-fuse {
+    background: var(--nt-bg-soft);
+    height: 3px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .subz-fuse-fill {
+    background: var(--nt-accent);
+    display: block;
+    height: 100%;
+    transition: width 1s linear;
+  }
+
+  .subz-fuse--warning .subz-fuse-fill {
+    background: var(--nt-warning);
+  }
+
+  .subz-fuse--danger .subz-fuse-fill {
+    background: var(--nt-danger);
+  }
+
+  // Subscription cards: tonal lift, no borders. Fuse bar rides the bottom edge.
+  .subz-grid {
+    display: grid;
+    gap: var(--nt-gap-3);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  }
+
+  .subz-card {
+    background: var(--nt-bg-panel);
+    display: grid;
+    gap: var(--nt-gap-1);
+    padding: var(--nt-pad-3);
+    padding-bottom: var(--nt-pad-3);
+    position: relative;
+    transition: background-color var(--nt-duration-normal) var(--nt-ease-standard);
+  }
+
+  .subz-card--flash {
+    animation: subz-pulse 0.7s var(--nt-ease-standard);
+  }
+
+  @keyframes subz-pulse {
+    0% {
+      background-color: var(--nt-alert-success-bg);
+    }
+    100% {
+      background-color: var(--nt-bg-panel);
+    }
+  }
+
+  .subz-card-head {
+    align-items: baseline;
+    display: flex;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .subz-card-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .subz-card-meta {
+    color: var(--nt-accent);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    flex-shrink: 0;
+  }
+
+  .subz-card-count {
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: var(--nt-line-height-tight);
+  }
+
+  .subz-card--warning .subz-card-count {
+    color: var(--nt-warning);
+  }
+
+  .subz-card--danger .subz-card-count {
+    color: var(--nt-danger);
+  }
+
+  .subz-card-sub {
+    color: var(--nt-text-muted);
+    font-size: var(--nt-font-size-meta);
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .subz-card-actions {
+    align-items: center;
+    display: flex;
+    gap: var(--nt-gap-1);
+    margin-top: var(--nt-gap-1);
+  }
+
+  .subz-delete {
+    color: var(--nt-text-faint);
+    margin-left: auto;
+  }
+
+  .subz-delete:hover {
+    color: var(--nt-danger);
+  }
+
+  .subz-cancel-link {
+    align-items: center;
+    color: var(--nt-text-faint);
+    display: inline-flex;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .subz-cancel-link:hover {
+    color: var(--nt-text);
+  }
+
+  // Category filter chips and the budget meter.
+  .subz-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nt-gap-1);
+    margin-bottom: var(--nt-gap-3);
+  }
+
+  .subz-filter {
+    background: none;
+    border: 0;
+    color: var(--nt-text-faint);
+    cursor: pointer;
+    font: inherit;
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    padding: var(--nt-pad-1) var(--nt-pad-2);
+    text-transform: uppercase;
+  }
+
+  .subz-filter:hover {
+    color: var(--nt-text);
+  }
+
+  .subz-filter--active {
+    background: var(--nt-accent-muted);
+    color: var(--nt-accent);
+  }
+
+  .subz-budget {
+    display: grid;
+    gap: var(--nt-gap-1);
+    margin-top: var(--nt-gap-2);
+  }
+
+  .subz-budget-figures {
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-label);
+  }
+
+  .subz-budget-unit {
+    color: var(--nt-text-faint);
+  }
+
+  .subz-budget-meter {
+    max-width: 320px;
+  }
+
+  .subz-budget-edit {
+    display: flex;
+    gap: var(--nt-gap-2);
+  }
+
+  .subz-funded {
+    cursor: pointer;
+    border: 0;
+    font: inherit;
+  }
+
+  .subz-funded-check {
+    align-items: center;
+    color: var(--nt-text-muted);
+    display: flex;
+    font-size: var(--nt-font-size-label);
+    gap: var(--nt-gap-2);
+    margin-right: auto;
+  }
+
+  // Fuse bar pinned to the card's bottom edge, full-bleed.
+  .subz-card .subz-fuse {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+  }
+
+  .subz-revealed {
+    background: var(--nt-bg-soft);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-mono);
+    margin: 0;
+    overflow-wrap: anywhere;
+    padding: var(--nt-pad-2) var(--nt-pad-3);
+    white-space: pre-wrap;
+  }
+
+  // Skeleton placeholders while the first fetch lands.
+  .subz-skel {
+    min-height: 108px;
+    animation: subz-skel-breathe 1.6s var(--nt-ease-standard) infinite;
+  }
+
+  @keyframes subz-skel-breathe {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  // Empty state: an invitation, not a void.
+  .subz-empty {
+    background: var(--nt-bg-panel);
+    display: grid;
+    gap: var(--nt-gap-3);
+    justify-items: start;
+    padding: var(--nt-pad-5);
+  }
+
+  .subz-empty-title {
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-subtitle);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .subz-unlock-callout {
+    align-items: center;
+    display: flex;
+    gap: var(--nt-gap-3);
+    justify-content: space-between;
+  }
+
+  .subz-unlock-copy {
+    display: grid;
+    gap: 2px;
+  }
+
+  // Collapsible folds for secondary surfaces.
+  .subz-fold {
+    border-top: 1px solid var(--nt-line-subtle);
+  }
+
+  .subz-fold-trigger {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--nt-text-muted);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-label);
+    gap: var(--nt-gap-2);
+    padding: var(--nt-pad-2) 0;
+    text-transform: uppercase;
+    width: 100%;
+  }
+
+  .subz-fold-trigger:hover {
+    color: var(--nt-text);
+  }
+
+  .subz-chevron {
+    display: inline-block;
+    transition: transform var(--nt-duration-fast) var(--nt-ease-standard);
+  }
+
+  .subz-chevron--open {
+    transform: rotate(90deg);
+  }
+
+  .subz-fold-body {
+    display: grid;
+    gap: var(--nt-gap-3);
+    list-style: none;
+    margin: 0;
+    padding: var(--nt-pad-2) 0 var(--nt-pad-3);
+  }
+
+  .subz-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nt-gap-2);
+  }
+
+  .subz-ops-note {
+    margin: 0;
+  }
+
+  .subz-purge {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nt-gap-2);
+  }
+
+  .subz-purge-name {
+    text-decoration: line-through;
+    text-decoration-color: var(--nt-danger);
+  }
+
+  .subz-purge-date {
+    font-family: "Plex Mono", var(--nt-font-mono);
+  }
+
+  // Template picker: brand-tinted monogram tiles, soft tonal backgrounds.
+  .subz-templates {
+    display: grid;
+    gap: var(--nt-gap-2);
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  }
+
+  .subz-template {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--nt-text-muted);
+    cursor: pointer;
+    display: grid;
+    font: inherit;
+    font-size: var(--nt-font-size-meta);
+    gap: var(--nt-gap-1);
+    justify-items: center;
+    padding: var(--nt-pad-2);
+  }
+
+  .subz-template:hover {
+    color: var(--nt-text);
+  }
+
+  .subz-template-tile {
+    align-items: center;
+    background: color-mix(in srgb, var(--tile-color) 14%, transparent);
+    color: var(--tile-color);
+    display: flex;
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: 15px;
+    font-weight: 600;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .subz-template--selected {
+    background: var(--nt-accent-muted);
+    box-shadow: inset 0 0 0 1px var(--nt-accent);
+    color: var(--nt-text);
+  }
+
+  .subz-template-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  // Creation lives in a dialog, not an ever-present form.
+  .subz-backdrop {
+    background: rgba(4, 6, 8, 0.72);
+    display: grid;
+    inset: 0;
+    padding: var(--nt-pad-4);
+    place-items: center;
+    position: fixed;
+    z-index: 10;
+  }
+
+  .subz-dialog {
+    background: var(--nt-bg-panel);
+    display: grid;
+    gap: var(--nt-gap-4);
+    max-width: 560px;
+    max-height: calc(100dvh - 2 * var(--nt-pad-4));
+    overflow-y: auto;
+    padding: var(--nt-pad-4);
+    width: 100%;
+  }
+
+  .subz-dialog-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .subz-dialog-actions {
+    display: flex;
+    gap: var(--nt-gap-2);
+    justify-content: flex-end;
+  }
+
+  // Split sessions inside a card.
+  .subz-session {
+    border-top: 1px solid var(--nt-line-subtle);
+    display: grid;
+    gap: var(--nt-gap-2);
+    margin-top: var(--nt-gap-2);
+    padding-top: var(--nt-pad-2);
+  }
+
+  .subz-session-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .subz-session-title {
+    color: var(--nt-text-muted);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    text-transform: uppercase;
+  }
+
+  .subz-seat-list {
+    display: grid;
+    gap: var(--nt-gap-1);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .subz-seat {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .subz-seat-name--paid {
+    color: var(--nt-text-faint);
+  }
+
+  .subz-session-join {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  // Toast: transient confirmation, bottom corner, auto-dismissed by the app.
+  .subz-toast {
+    bottom: var(--nt-pad-4);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-mono);
+    max-width: min(420px, calc(100% - 2 * var(--nt-pad-4)));
+    padding: var(--nt-pad-2) var(--nt-pad-3);
+    position: fixed;
+    right: var(--nt-pad-4);
+    z-index: 20;
+  }
+
+  .subz-toast--success {
+    background: var(--nt-alert-success-bg);
+    color: var(--nt-text);
+  }
+
+  .subz-toast--error {
+    background: var(--nt-alert-danger-bg);
+    color: var(--nt-text);
+  }
+
+  .subz-footer {
+    justify-content: flex-end;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .subz-fuse-fill,
+    .subz-chevron,
+    .subz-card {
+      transition: none;
+    }
+
+    .subz-card--flash,
+    .subz-skel {
+      animation: none;
+    }
+  }
+
+  @container (max-width: 500px) {
+    .nt-app.subz-app {
+      padding: var(--nt-pad-4);
+    }
+
+    .subz-shell {
+      min-height: calc(100dvh - (var(--nt-pad-4) * 2));
+    }
+
+    .subz-hero-value {
+      font-size: 26px;
+    }
+  }
+}

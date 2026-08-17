@@ -1,0 +1,15 @@
+{
+  "format": 2,
+  "app": "subz",
+  "memory": {
+    "subz": {
+      "schemas": {
+        "1": {
+          "hash": "f66db5804309c3702d841181834ffeb3bbad3e20ca9d3a8f1a796dfa8c497ab3",
+          "entry": "f66db5804309c3702d841181834ffeb3bbad3e20ca9d3a8f1a796dfa8c497ab3"
+        }
+      },
+      "migrations": {}
+    }
+  }
+}
