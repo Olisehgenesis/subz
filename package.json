@@ -10,12 +10,13 @@
     "mopack": "bun ../../packages/neutron-scripts/src/mopack.ts",
     "schema": "bun ../../packages/neutron-scripts/src/method_schema.ts",
     "validate": "bun ../../packages/neutron-scripts/src/validate.ts",
-    "package": "npm run validate && npm run build && npm run mopack && npm run schema && bun ../../packages/neutron-scripts/src/pack.ts",
+    "package:metadata": "bun ../../packages/neutron-scripts/src/package_metadata.ts",
+    "package": "npm run validate && npm run build && npm run mopack && npm run schema && npm run package:metadata && bun ../../packages/neutron-scripts/src/pack.ts",
     "watch": "bun build.ts watch",
     "test": "npm run package && bun test"
   },
   "author": "",
-  "license": "GPL-3.0-only",
+  "license": "LicenseRef-Neutron-Sovereign-Application-Use-License-1.0",
   "description": "subZ — self-destructing subscription vault Neutron app",
   "dependencies": {
     "@dfinity/vetkeys": "0.4.0",

@@ -123,6 +123,65 @@ function formatIcp(e8s: number): string {
   return (e8s / 1e8).toFixed(4).replace(/\.?0+$/, "") + " ICP";
 }
 
+// Example-only fixtures for the empty-state "Show me an example" preview.
+// These are plain client-side objects — never sent to add_subscription, never
+// touch the canister — so they can showcase all three fuse states on demand,
+// including "danger" (already burnt, awaiting the hourly sweep), which the
+// real add_subscription call can't produce directly since renew_days has a
+// 1-day floor. Ids are prefixed so they can never collide with a real sub.
+function buildDemoSubs(): SubscriptionMeta[] {
+  const now = Date.now();
+  const nowNs = now * 1e6;
+  const templateFor = (name: string) => SERVICE_TEMPLATES.find((t) => t.name === name);
+  const netflix = templateFor("Netflix");
+  const electricity = templateFor("Electricity");
+  const gym = templateFor("Gym");
+  const base = {
+    funded: false,
+    cancel_url: "",
+    has_note: false,
+    note_bytes: 0,
+    pot_e8s: 0,
+    payee: "",
+    created_at: nowNs,
+  };
+  return [
+    {
+      ...base,
+      id: "demo-netflix",
+      name: netflix?.name ?? "Netflix",
+      cost: netflix?.cost ?? "$15.49/mo",
+      category: netflix?.category ?? "streaming",
+      cancel_url: netflix?.cancelUrl ?? "",
+      renew_days: 30,
+      expires_at: nowNs + 20 * 86_400 * 1e9,
+      seconds_left: 20 * 86_400,
+    },
+    {
+      ...base,
+      id: "demo-electricity",
+      name: electricity?.name ?? "Electricity",
+      cost: electricity?.cost ?? "",
+      category: electricity?.category ?? "utilities",
+      cancel_url: electricity?.cancelUrl ?? "",
+      renew_days: 30,
+      expires_at: nowNs + 6 * 3_600 * 1e9,
+      seconds_left: 6 * 3_600,
+    },
+    {
+      ...base,
+      id: "demo-gym",
+      name: gym?.name ?? "Gym",
+      cost: gym?.cost ?? "",
+      category: gym?.category ?? "life",
+      cancel_url: gym?.cancelUrl ?? "",
+      renew_days: 30,
+      expires_at: nowNs - 15 * 60 * 1e9,
+      seconds_left: 0,
+    },
+  ];
+}
+
 const CYCLE_PRESETS = [
   { label: "weekly", days: 7 },
   { label: "monthly", days: 30 },
@@ -182,6 +241,7 @@ export const App = () => {
   const [editFor, setEditFor] = useState<string | null>(null);
   const [potDrafts, setPotDrafts] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [demoSubs, setDemoSubs] = useState<SubscriptionMeta[] | null>(null);
 
   const loading = status === null;
 
@@ -226,6 +286,12 @@ export const App = () => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [showForm, splitFor, editFor]);
+
+  // The example preview is only ever a stand-in for an empty vault — once a
+  // real subscription exists, drop it so it can't be mistaken for real data.
+  useEffect(() => {
+    if (subs.length > 0 && demoSubs !== null) setDemoSubs(null);
+  }, [subs.length, demoSubs]);
 
   const say = useCallback((next: Notice) => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -276,6 +342,12 @@ export const App = () => {
     setCancelUrl(t.cancelUrl);
     setRenewDays(String(t.renewDays));
   };
+
+  // Client-side only: never calls add_subscription, never touches the
+  // canister. Purely a rendering-layer preview of what a tracked sub looks
+  // like at each fuse stage.
+  const startDemo = () => setDemoSubs(buildDemoSubs());
+  const dismissDemo = () => setDemoSubs(null);
 
   const unlockKey = () => run(async () => {
     const key = await deriveVaultKey();
@@ -569,9 +641,55 @@ export const App = () => {
                 Track a subscription and its renewal date. Confirm you still want it
                 before the fuse runs out — or it burns, and that's your cue to cancel.
               </p>
-              <button className="nt-button" type="button" onClick={() => setShowForm(true)}>
-                {PlusIcon} Track your first sub
-              </button>
+              <div className="subz-empty-actions">
+                <button className="nt-button" type="button" onClick={() => setShowForm(true)}>
+                  {PlusIcon} Track your first sub
+                </button>
+                {demoSubs === null ? (
+                  <button className="nt-button nt-button--ghost" type="button" onClick={startDemo}>
+                    Show me an example
+                  </button>
+                ) : null}
+              </div>
+              {demoSubs !== null ? (
+                <div className="subz-demo" aria-label="Example subscriptions — not saved to your vault">
+                  <div className="subz-demo-head">
+                    <span className="subz-demo-badge">Example data · not saved</span>
+                    <button
+                      className="nt-button nt-button--ghost nt-button--sm"
+                      type="button"
+                      onClick={dismissDemo}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <div className="subz-grid" aria-hidden="true">
+                    {demoSubs.map((s) => {
+                      const left = secondsLeft(s, nowMs);
+                      const state = urgency(left);
+                      return (
+                        <article
+                          key={s.id}
+                          className={cx("subz-card", `subz-card--${state}`, "subz-card--demo")}
+                        >
+                          <div className="subz-card-head">
+                            <strong className="subz-card-name" title={s.name}>{s.name}</strong>
+                            <span className="subz-card-meta">{s.cost || "—"}</span>
+                          </div>
+                          <strong className="subz-card-count">{formatCountdown(left)}</strong>
+                          <p className="subz-card-sub">{s.category} · every {s.renew_days}d</p>
+                          <div className={cx("subz-fuse", `subz-fuse--${state}`)}>
+                            <span
+                              className="subz-fuse-fill"
+                              style={{ width: `${fuseFraction(s, nowMs) * 100}%` }}
+                            />
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : (
             <section aria-label="Tracked subscriptions">

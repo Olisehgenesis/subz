@@ -27,6 +27,8 @@
   .nt-app.subz-app {
     --nt-accent: #e8a15c;
     --nt-accent-muted: #33271a;
+    --subz-ember: #ff8a3d;
+    --subz-ember-soft: rgba(255, 138, 61, 0.35);
     container-type: inline-size;
     min-height: 100dvh;
     padding: var(--nt-pad-5);
@@ -45,11 +47,12 @@
     display: flex;
     justify-content: space-between;
     min-width: 0;
+    padding-bottom: var(--nt-pad-2);
   }
 
   .subz-brand {
     display: grid;
-    gap: 2px;
+    gap: 3px;
     min-width: 0;
   }
 
@@ -57,32 +60,54 @@
     color: var(--nt-text-faint);
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-meta);
+    letter-spacing: 0.06em;
     margin: 0;
     text-transform: uppercase;
   }
 
   .subz-wordmark {
     font-family: "Plex Mono", var(--nt-font-mono);
-    font-size: var(--nt-font-size-title);
+    font-size: 26px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: var(--nt-line-height-tight);
     margin: 0;
   }
 
   .subz-wordmark-z {
     color: var(--nt-accent);
+    text-shadow: 0 0 14px var(--subz-ember-soft);
   }
 
   .subz-topbar-actions {
     align-items: center;
     display: flex;
-    gap: var(--nt-gap-2);
+    gap: var(--nt-gap-3);
   }
 
   // Hero: the next renewal, ticking live. Value first, label quiet.
+  // Escalates from a bare metric into a tonal panel as urgency rises, so the
+  // state reads before you've even parsed the number.
   .subz-hero {
+    border-radius: var(--nt-radius-panel);
     display: grid;
-    gap: var(--nt-gap-2);
+    gap: var(--nt-gap-3);
+    padding: var(--nt-pad-1) 0;
+    transition: background-color var(--nt-duration-normal) var(--nt-ease-standard),
+      padding var(--nt-duration-normal) var(--nt-ease-standard);
+  }
+
+  .subz-hero--warning,
+  .subz-hero--danger {
+    padding: var(--nt-pad-4);
+  }
+
+  .subz-hero--warning {
+    background: var(--nt-warning-muted);
+  }
+
+  .subz-hero--danger {
+    background: var(--nt-danger-muted);
   }
 
   .subz-hero-row {
@@ -97,16 +122,19 @@
     color: var(--nt-text-muted);
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-label);
+    letter-spacing: 0.03em;
     text-transform: uppercase;
   }
 
   .subz-hero-value {
     color: var(--nt-text);
     font-family: "Plex Mono", var(--nt-font-mono);
-    font-size: 34px;
+    font-size: 40px;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: var(--nt-line-height-tight);
+    transition: color var(--nt-duration-normal) var(--nt-ease-standard);
   }
 
   .subz-hero--warning .subz-hero-value {
@@ -114,70 +142,167 @@
   }
 
   .subz-hero--danger .subz-hero-value {
+    animation: subz-ember-text 1.6s var(--nt-ease-standard) infinite;
     color: var(--nt-danger);
   }
 
-  // The signature: a fuse that literally burns down. Solid fills only.
+  @keyframes subz-ember-text {
+    0%, 100% {
+      text-shadow: 0 0 0 transparent;
+    }
+    50% {
+      text-shadow: 0 0 18px rgba(255, 120, 133, 0.45);
+    }
+  }
+
+  // The signature: a fuse that literally burns down. Solid fills only —
+  // texture comes from a bright ember cap riding the burn edge, not gradients.
   .subz-fuse {
     background: var(--nt-bg-soft);
-    height: 3px;
-    overflow: hidden;
+    border-radius: var(--nt-radius-1);
+    box-shadow: var(--nt-shadow-hairline);
+    height: 5px;
+    overflow: visible;
+    position: relative;
     width: 100%;
   }
 
   .subz-fuse-fill {
     background: var(--nt-accent);
+    border-radius: var(--nt-radius-1);
     display: block;
     height: 100%;
-    transition: width 1s linear;
+    position: relative;
+    transition: width 1s linear, background-color var(--nt-duration-normal) var(--nt-ease-standard);
   }
 
-  .subz-fuse--warning .subz-fuse-fill {
+  // Ember cap: a small bright dot riding the leading edge of the burn. Stays
+  // within the track horizontally; only bleeds a hair vertically for glow.
+  .subz-fuse-fill::after {
+    background: var(--nt-accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px 1px var(--subz-ember-soft);
+    content: "";
+    height: 8px;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+  }
+
+  .subz-fuse--warning .subz-fuse-fill,
+  .subz-fuse--warning .subz-fuse-fill::after {
     background: var(--nt-warning);
+    box-shadow: 0 0 7px 1px rgba(243, 204, 114, 0.4);
   }
 
   .subz-fuse--danger .subz-fuse-fill {
+    animation: subz-fuse-glow 1s var(--nt-ease-standard) infinite;
     background: var(--nt-danger);
+  }
+
+  @keyframes subz-fuse-glow {
+    0%, 100% {
+      box-shadow: 0 0 4px 0 rgba(255, 120, 133, 0.35);
+    }
+    50% {
+      box-shadow: 0 0 9px 1px rgba(255, 120, 133, 0.6);
+    }
+  }
+
+  .subz-fuse--danger .subz-fuse-fill::after {
+    animation: subz-spark-pulse 1s var(--nt-ease-standard) infinite;
+    background: var(--nt-danger);
+  }
+
+  @keyframes subz-spark-pulse {
+    0%, 100% {
+      box-shadow: 0 0 6px 1px rgba(255, 120, 133, 0.5);
+      transform: translateY(-50%) scale(1);
+    }
+    50% {
+      box-shadow: 0 0 12px 3px rgba(255, 120, 133, 0.75);
+      transform: translateY(-50%) scale(1.25);
+    }
   }
 
   // Subscription cards: tonal lift, no borders. Fuse bar rides the bottom edge.
   .subz-grid {
     display: grid;
-    gap: var(--nt-gap-3);
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+    gap: var(--nt-gap-4);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr));
   }
 
   .subz-card {
     background: var(--nt-bg-panel);
+    border-radius: var(--nt-radius-panel);
+    box-shadow: var(--nt-shadow-hairline);
     display: grid;
-    gap: var(--nt-gap-1);
-    padding: var(--nt-pad-3);
-    padding-bottom: var(--nt-pad-3);
+    gap: var(--nt-gap-2);
+    padding: var(--nt-pad-4);
+    padding-bottom: var(--nt-pad-5);
     position: relative;
+    transition:
+      background-color var(--nt-duration-normal) var(--nt-ease-standard),
+      box-shadow var(--nt-duration-normal) var(--nt-ease-standard),
+      transform var(--nt-duration-normal) var(--nt-ease-standard);
+  }
+
+  // Urgency accent riding the top edge — reads before the number does.
+  .subz-card::before {
+    background: var(--nt-line);
+    border-radius: var(--nt-radius-1) var(--nt-radius-1) 0 0;
+    content: "";
+    height: 2px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
     transition: background-color var(--nt-duration-normal) var(--nt-ease-standard);
   }
 
+  .subz-card--warning::before {
+    background: var(--nt-warning);
+  }
+
+  .subz-card--danger::before {
+    background: var(--nt-danger);
+  }
+
+  .subz-card:hover,
+  .subz-card:focus-within {
+    background: var(--nt-bg-elevated);
+    box-shadow: var(--nt-shadow-hairline), var(--nt-shadow-raised);
+    transform: translateY(-2px);
+  }
+
   .subz-card--flash {
-    animation: subz-pulse 0.7s var(--nt-ease-standard);
+    animation: subz-pulse 0.8s var(--nt-ease-standard);
   }
 
   @keyframes subz-pulse {
     0% {
       background-color: var(--nt-alert-success-bg);
+      box-shadow: var(--nt-shadow-hairline), 0 0 0 1px var(--nt-success);
     }
     100% {
       background-color: var(--nt-bg-panel);
+      box-shadow: var(--nt-shadow-hairline);
     }
   }
 
   .subz-card-head {
     align-items: baseline;
     display: flex;
+    gap: var(--nt-gap-2);
     justify-content: space-between;
     min-width: 0;
   }
 
   .subz-card-name {
+    font-size: var(--nt-font-size-subtitle);
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -192,10 +317,11 @@
 
   .subz-card-count {
     font-family: "Plex Mono", var(--nt-font-mono);
-    font-size: 22px;
+    font-size: 26px;
     font-variant-numeric: tabular-nums;
-    font-weight: 500;
+    font-weight: 600;
     line-height: var(--nt-line-height-tight);
+    transition: color var(--nt-duration-normal) var(--nt-ease-standard);
   }
 
   .subz-card--warning .subz-card-count {
@@ -223,6 +349,7 @@
   .subz-delete {
     color: var(--nt-text-faint);
     margin-left: auto;
+    transition: color var(--nt-duration-fast) var(--nt-ease-standard);
   }
 
   .subz-delete:hover {
@@ -235,6 +362,7 @@
     display: inline-flex;
     justify-content: center;
     text-decoration: none;
+    transition: color var(--nt-duration-fast) var(--nt-ease-standard);
   }
 
   .subz-cancel-link:hover {
@@ -245,23 +373,29 @@
   .subz-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--nt-gap-1);
-    margin-bottom: var(--nt-gap-3);
+    gap: var(--nt-gap-2);
+    margin-bottom: var(--nt-gap-4);
   }
 
   .subz-filter {
     background: none;
     border: 0;
+    border-radius: var(--nt-radius-3);
     color: var(--nt-text-faint);
     cursor: pointer;
     font: inherit;
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-meta);
-    padding: var(--nt-pad-1) var(--nt-pad-2);
+    letter-spacing: 0.03em;
+    padding: var(--nt-pad-1) var(--nt-pad-3);
     text-transform: uppercase;
+    transition:
+      background-color var(--nt-duration-fast) var(--nt-ease-standard),
+      color var(--nt-duration-fast) var(--nt-ease-standard);
   }
 
   .subz-filter:hover {
+    background: var(--nt-bg-control-hover);
     color: var(--nt-text);
   }
 
@@ -270,15 +404,21 @@
     color: var(--nt-accent);
   }
 
+  .subz-filter--active:hover {
+    background: var(--nt-accent-muted);
+    color: var(--nt-accent);
+  }
+
   .subz-budget {
     display: grid;
-    gap: var(--nt-gap-1);
-    margin-top: var(--nt-gap-2);
+    gap: var(--nt-gap-2);
+    margin-top: var(--nt-gap-3);
   }
 
   .subz-budget-figures {
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-label);
+    font-variant-numeric: tabular-nums;
   }
 
   .subz-budget-unit {
@@ -309,11 +449,14 @@
     margin-right: auto;
   }
 
-  // Fuse bar pinned to the card's bottom edge, full-bleed.
+  // Fuse bar sits inside the card's reserved bottom padding, inset to match
+  // the card's own horizontal rhythm rather than full-bleed to the edge.
   .subz-card .subz-fuse {
-    bottom: 0;
-    left: 0;
+    bottom: 10px;
+    left: var(--nt-pad-4);
     position: absolute;
+    right: var(--nt-pad-4);
+    width: auto;
   }
 
   .subz-revealed {
@@ -328,26 +471,43 @@
 
   // Skeleton placeholders while the first fetch lands.
   .subz-skel {
+    background: var(--nt-bg-panel);
+    border-radius: var(--nt-radius-panel);
+    box-shadow: var(--nt-shadow-hairline);
     min-height: 108px;
     animation: subz-skel-breathe 1.6s var(--nt-ease-standard) infinite;
   }
 
   @keyframes subz-skel-breathe {
     0%, 100% {
-      opacity: 1;
+      opacity: 0.6;
     }
     50% {
-      opacity: 0.45;
+      opacity: 0.25;
     }
   }
 
-  // Empty state: an invitation, not a void.
+  // Empty state: an invitation, not a void. A small ember glyph stands in
+  // for the fuse concept without needing any new markup.
   .subz-empty {
     background: var(--nt-bg-panel);
+    border-radius: var(--nt-radius-panel);
+    box-shadow: var(--nt-shadow-hairline);
     display: grid;
     gap: var(--nt-gap-3);
-    justify-items: start;
-    padding: var(--nt-pad-5);
+    justify-items: center;
+    padding: var(--nt-pad-6) var(--nt-pad-5);
+    text-align: center;
+  }
+
+  .subz-empty::before {
+    background: var(--nt-accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 7px var(--nt-accent-muted), 0 0 26px 4px var(--subz-ember-soft);
+    content: "";
+    height: 10px;
+    margin-bottom: var(--nt-gap-2);
+    width: 10px;
   }
 
   .subz-empty-title {
@@ -355,6 +515,69 @@
     font-size: var(--nt-font-size-subtitle);
     font-weight: 600;
     margin: 0;
+  }
+
+  .subz-empty .nt-text {
+    max-width: 44ch;
+  }
+
+  .subz-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--nt-gap-2);
+    justify-content: center;
+  }
+
+  // "Show me an example" preview: same card/fuse classes as the real grid
+  // (so it inherits every urgency-state visual for free), stretched to full
+  // width against the parent's centered layout, and clearly marked as a
+  // non-persisted stand-in.
+  .subz-demo {
+    display: grid;
+    gap: var(--nt-gap-3);
+    justify-self: stretch;
+    margin-top: var(--nt-gap-2);
+    text-align: left;
+    width: 100%;
+  }
+
+  .subz-demo-head {
+    align-items: center;
+    display: flex;
+    gap: var(--nt-gap-2);
+    justify-content: space-between;
+  }
+
+  .subz-demo-badge {
+    color: var(--nt-text-faint);
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: var(--nt-font-size-meta);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .subz-card--demo {
+    background: var(--nt-bg-soft);
+  }
+
+  .subz-card--demo::after {
+    background: var(--nt-bg-elevated);
+    border-radius: var(--nt-radius-1);
+    color: var(--nt-text-faint);
+    content: "example";
+    font-family: "Plex Mono", var(--nt-font-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    position: absolute;
+    right: var(--nt-pad-2);
+    text-transform: uppercase;
+    top: var(--nt-pad-2);
+  }
+
+  .subz-card--demo:hover,
+  .subz-card--demo:focus-within {
+    transform: none;
   }
 
   .subz-unlock-callout {
@@ -378,6 +601,7 @@
     align-items: center;
     background: none;
     border: 0;
+    border-radius: var(--nt-radius-3);
     color: var(--nt-text-muted);
     cursor: pointer;
     display: flex;
@@ -385,12 +609,18 @@
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-label);
     gap: var(--nt-gap-2);
-    padding: var(--nt-pad-2) 0;
+    letter-spacing: 0.03em;
+    padding: var(--nt-pad-2) var(--nt-pad-2);
+    margin: 0 calc(var(--nt-pad-2) * -1);
     text-transform: uppercase;
-    width: 100%;
+    transition:
+      background-color var(--nt-duration-fast) var(--nt-ease-standard),
+      color var(--nt-duration-fast) var(--nt-ease-standard);
+    width: calc(100% + var(--nt-pad-2) * 2);
   }
 
   .subz-fold-trigger:hover {
+    background: var(--nt-bg-control-hover);
     color: var(--nt-text);
   }
 
@@ -449,6 +679,7 @@
     align-items: center;
     background: none;
     border: 0;
+    border-radius: var(--nt-radius-3);
     color: var(--nt-text-muted);
     cursor: pointer;
     display: grid;
@@ -457,10 +688,17 @@
     gap: var(--nt-gap-1);
     justify-items: center;
     padding: var(--nt-pad-2);
+    transition: background-color var(--nt-duration-fast) var(--nt-ease-standard),
+      color var(--nt-duration-fast) var(--nt-ease-standard);
   }
 
   .subz-template:hover {
+    background: var(--nt-bg-control-hover);
     color: var(--nt-text);
+  }
+
+  .subz-template:hover .subz-template-tile {
+    transform: scale(1.08);
   }
 
   .subz-template-tile {
@@ -473,6 +711,7 @@
     font-weight: 600;
     height: 32px;
     justify-content: center;
+    transition: transform var(--nt-duration-fast) var(--nt-ease-standard);
     width: 32px;
   }
 
@@ -480,6 +719,10 @@
     background: var(--nt-accent-muted);
     box-shadow: inset 0 0 0 1px var(--nt-accent);
     color: var(--nt-text);
+  }
+
+  .subz-template--selected .subz-template-tile {
+    box-shadow: 0 0 0 2px var(--nt-accent), 0 0 12px 1px var(--subz-ember-soft);
   }
 
   .subz-template-name {
@@ -491,6 +734,8 @@
 
   // Creation lives in a dialog, not an ever-present form.
   .subz-backdrop {
+    animation: subz-backdrop-in var(--nt-duration-normal) var(--nt-ease-standard);
+    backdrop-filter: blur(3px);
     background: rgba(4, 6, 8, 0.72);
     display: grid;
     inset: 0;
@@ -500,21 +745,46 @@
     z-index: 10;
   }
 
+  @keyframes subz-backdrop-in {
+    from {
+      background: rgba(4, 6, 8, 0);
+    }
+    to {
+      background: rgba(4, 6, 8, 0.72);
+    }
+  }
+
   .subz-dialog {
+    animation: subz-dialog-in var(--nt-duration-normal) var(--nt-ease-standard);
     background: var(--nt-bg-panel);
+    border-radius: var(--nt-radius-panel);
+    box-shadow: var(--nt-shadow-hairline), var(--nt-shadow-raised);
     display: grid;
     gap: var(--nt-gap-4);
     max-width: 560px;
     max-height: calc(100dvh - 2 * var(--nt-pad-4));
     overflow-y: auto;
-    padding: var(--nt-pad-4);
+    padding: var(--nt-pad-5);
     width: 100%;
+  }
+
+  @keyframes subz-dialog-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   .subz-dialog-head {
     align-items: center;
+    border-bottom: 1px solid var(--nt-line-subtle);
     display: flex;
     justify-content: space-between;
+    padding-bottom: var(--nt-pad-3);
   }
 
   .subz-dialog-actions {
@@ -637,23 +907,39 @@
 
   // Toast: transient confirmation, bottom corner, auto-dismissed by the app.
   .subz-toast {
+    animation: subz-toast-in var(--nt-duration-normal) var(--nt-ease-standard);
+    border-radius: var(--nt-radius-panel);
     bottom: var(--nt-pad-4);
+    box-shadow: var(--nt-shadow-raised);
     font-family: "Plex Mono", var(--nt-font-mono);
     font-size: var(--nt-font-size-mono);
     max-width: min(420px, calc(100% - 2 * var(--nt-pad-4)));
-    padding: var(--nt-pad-2) var(--nt-pad-3);
+    padding: var(--nt-pad-3) var(--nt-pad-4);
     position: fixed;
     right: var(--nt-pad-4);
     z-index: 20;
   }
 
+  @keyframes subz-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .subz-toast--success {
     background: var(--nt-alert-success-bg);
+    box-shadow: var(--nt-shadow-raised), inset 2px 0 var(--nt-success);
     color: var(--nt-text);
   }
 
   .subz-toast--error {
     background: var(--nt-alert-danger-bg);
+    box-shadow: var(--nt-shadow-raised), inset 2px 0 var(--nt-danger);
     color: var(--nt-text);
   }
 
@@ -663,13 +949,25 @@
 
   @media (prefers-reduced-motion: reduce) {
     .subz-fuse-fill,
+    .subz-fuse-fill::after,
     .subz-chevron,
-    .subz-card {
+    .subz-card,
+    .subz-hero,
+    .subz-hero-value,
+    .subz-dialog,
+    .subz-toast,
+    .subz-template-tile {
       transition: none;
     }
 
     .subz-card--flash,
-    .subz-skel {
+    .subz-skel,
+    .subz-hero--danger .subz-hero-value,
+    .subz-fuse--danger .subz-fuse-fill,
+    .subz-fuse--danger .subz-fuse-fill::after,
+    .subz-backdrop,
+    .subz-dialog,
+    .subz-toast {
       animation: none;
     }
   }
@@ -684,7 +982,12 @@
     }
 
     .subz-hero-value {
-      font-size: 26px;
+      font-size: 30px;
+    }
+
+    .subz-hero--warning,
+    .subz-hero--danger {
+      padding: var(--nt-pad-3);
     }
   }
 }
