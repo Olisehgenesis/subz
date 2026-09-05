@@ -10,7 +10,7 @@ import { validate_neutron_conf } from "neutron-tools/src/validate_schema.js";
 const manifestUrl = new URL("../neutron.json", import.meta.url);
 const backendUrl = new URL("../backend/main.mo", import.meta.url);
 const htmlUrl = new URL("../dist/web/index.html", import.meta.url);
-const cssUrl = new URL("../dist/web/main.css", import.meta.url);
+const cssUrl = new URL("../dist/web/index.css", import.meta.url);
 
 async function readManifest(): Promise<NeutronManifest> {
   return JSON.parse(await readFile(manifestUrl, "utf8")) as NeutronManifest;
@@ -76,7 +76,7 @@ test("subz bundles the shared design system stylesheet", async () => {
   const html = await readFile(htmlUrl, "utf8");
   const css = await readFile(cssUrl, "utf8");
 
-  expect(html).toContain("./main.css");
+  expect(html).toContain("./index.css");
   expect(css).toContain(".nt-app");
   expect(css).toContain(".nt-button");
   expect(css).toContain(".nt-metric");
