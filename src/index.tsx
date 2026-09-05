@@ -247,10 +247,10 @@ export const App = () => {
 
   const refresh = useCallback(async () => {
     const [nextStatus, nextSubs, nextPurges, nextSessions] = await Promise.all([
-      querySelf<Status>("status"),
-      querySelf<RawSubscriptionMeta[]>("list_subscriptions"),
-      querySelf<PurgeEvent[]>("purge_log"),
-      querySelf<SessionView[]>("list_sessions"),
+      querySelf<Status>("status", [null]),
+      querySelf<RawSubscriptionMeta[]>("list_subscriptions", [null]),
+      querySelf<PurgeEvent[]>("purge_log", [null]),
+      querySelf<SessionView[]>("list_sessions", [null]),
     ]);
     setStatus(nextStatus);
     setSubs(nextSubs.map(normalizeSub));
@@ -507,12 +507,13 @@ export const App = () => {
   });
 
   const purgeNow = () => run(async () => {
-    return await updateSelf<string>("purge_now");
+    return await updateSelf<string>("purge_now", [null]);
   });
 
   const signReceipt = () => run(async () => {
     const receipt = await updateSelf<{ ok: boolean; error: string; signature_hex: string }>(
       "sign_purge_receipt",
+      [null],
     );
     return receipt.ok
       ? "Burn receipt signed: " + receipt.signature_hex.slice(0, 34) + "…"
