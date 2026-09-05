@@ -25,7 +25,7 @@ const Tray = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const all = await querySelf<SubscriptionMeta[]>("list_subscriptions");
+    const all = await querySelf<SubscriptionMeta[]>("list_subscriptions", [null]);
     setSubs(
       [...all].sort((a, b) => Number(a.seconds_left) - Number(b.seconds_left)).slice(0, 5),
     );
