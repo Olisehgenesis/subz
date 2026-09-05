@@ -2,7 +2,7 @@
   "format": 3,
   "name": "subZ",
   "id": "subz",
-  "version": 200,
+  "version": 201,
   "description": "Subscription vault: vetKey-sealed API keys that self-destruct unless you extend them",
   "src": "main.mo",
   "backend": {
